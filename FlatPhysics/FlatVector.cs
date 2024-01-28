@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlatPhysics
 {
-    public struct FlatVector
+    public readonly struct FlatVector
     {
         public readonly float X;
         public readonly float Y;
@@ -27,7 +23,8 @@ namespace FlatPhysics
         public static FlatVector operator -(FlatVector a, FlatVector b)
         {
             return new FlatVector(a.X - b.X, a.Y - b.Y);
-        }  
+        }
+
         public static FlatVector operator -(FlatVector v)
         {
             return new FlatVector(-v.X, -v.Y);
@@ -37,34 +34,42 @@ namespace FlatPhysics
         {
             return new FlatVector(v.X * s, v.Y * s);
         }
+
         public static FlatVector operator /(FlatVector v, float s)
         {
             return new FlatVector(v.X / s, v.Y / s);
         }
 
+        internal static FlatVector Transform(FlatVector v, FlatTransform transform)
+        {
+            return new FlatVector(
+                transform.Cos * v.X - transform.Sin * v.Y + transform.PositionX,
+                transform.Sin * v.X + transform.Cos * v.Y + transform.PositionY);
+        }
+
         public bool Equals(FlatVector other)
         {
             return this.X == other.X && this.Y == other.Y;
-        } 
+        }
+
         public override bool Equals(object obj)
         {
-            if(obj is FlatVector other)
+            if (obj is FlatVector other)
             {
                 return this.Equals(other);
             }
+
             return false;
         }
 
         public override int GetHashCode()
         {
-            return new {this.X, this.Y}.GetHashCode();
+            return new { this.X, this.Y }.GetHashCode();
         }
 
         public override string ToString()
         {
             return $"X: {this.X}, Y: {this.Y}";
         }
-
-
     }
 }

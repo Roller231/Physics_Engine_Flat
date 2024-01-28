@@ -26,6 +26,8 @@ namespace PhysicsEngine
         private List<FlatBody> bodyList;
         private Color[] colors;
 
+        private Vector2[] vertexBuffer;
+
         public Game1()
         {
             this.graphics = new GraphicsDeviceManager(this);
@@ -62,7 +64,7 @@ namespace PhysicsEngine
             for(int i = 0; i < bodyCount; i++)
             {
                 int type = RandomHelper.RandomInteger(0, 2);
-                type = (int)ShapeType.Circle;
+                type = (int)ShapeType.Box;
 
                 FlatBody body = null;
 
@@ -139,21 +141,27 @@ namespace PhysicsEngine
                 }
             }
 
-            for(int i = 0; i < this.bodyList.Count - 1; i++)
+            for (int i = 0; i < this.bodyList.Count; i++)
             {
-                FlatBody bodyA = this.bodyList[i];
-
-                for(int j = i + 1; j < this.bodyList.Count; j++)
-                {
-                    FlatBody bodyB = this.bodyList[j];
-
-                    if (Collision.IntersectCircles(bodyA.Position, bodyA.Radius, bodyB.Position, bodyB.Radius, out FlatVector normal, out float depth))
-                    {
-                        bodyA.Move(-normal * depth / 2f);
-                        bodyB.Move(normal * depth / 2f);
-                    }
-                }
+                FlatBody body = this.bodyList[i];
+                body.Rotate(MathF.PI / 2f * FlatUtil.GetElapsedTimeInSeconds(gameTime));
             }
+
+            //for(int i = 0; i < this.bodyList.Count - 1; i++)
+            //{
+            //    FlatBody bodyA = this.bodyList[i];
+
+            //    for(int j = i + 1; j < this.bodyList.Count; j++)
+            //    {
+            //        FlatBody bodyB = this.bodyList[j];
+
+            //        if (Collision.IntersectCircles(bodyA.Position, bodyA.Radius, bodyB.Position, bodyB.Radius, out FlatVector normal, out float depth))
+            //        {
+            //            bodyA.Move(-normal * depth / 2f);
+            //            bodyB.Move(normal * depth / 2f);
+            //        }
+            //    }
+            //}
 
 
             base.Update(gameTime);
@@ -180,7 +188,11 @@ namespace PhysicsEngine
                 }
                 else if (body.ShapeType is ShapeType.Box)
                 {
-                    shapes.DrawBox(position, body.Width, body.Height, Color.White);
+                    //shapes.DrawBox(position, body.Width, body.Height, Color.White);
+                    FlatConverter.ToVector2Array(body.GetTransformedVertice(), ref this.vertexBuffer);
+                    shapes.DrawPolygonFill(this.vertexBuffer, body.Triangles, this.colors[i]);
+                    shapes.DrawPolygon(this.vertexBuffer, Color.White);
+
                 }
             }
 
