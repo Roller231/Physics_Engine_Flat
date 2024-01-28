@@ -53,7 +53,7 @@ namespace PhysicsEngine
 
             this.camera.GetExtents(out float left, out float right, out float bottom, out float top);
 
-            int bodyCount = 10;
+            int bodyCount = 15;
             float padding = MathF.Abs(right - left) * 0.05f;
             this.bodyList = new List<FlatBody>(bodyCount);
             this.colors = new Color[bodyCount];
@@ -124,7 +124,7 @@ namespace PhysicsEngine
 
                 float dx = 0f;
                 float dy = 0f;
-                float speed = 8f;
+                float speed = 15f;
 
                 if(keyboard.IsKeyDown(Keys.Left)) { dx--; }
                 if(keyboard.IsKeyDown(Keys.Right)) { dx++; }
@@ -138,6 +138,23 @@ namespace PhysicsEngine
                     this.bodyList[0].Move(velocity);
                 }
             }
+
+            for(int i = 0; i < this.bodyList.Count - 1; i++)
+            {
+                FlatBody bodyA = this.bodyList[i];
+
+                for(int j = i + 1; j < this.bodyList.Count; j++)
+                {
+                    FlatBody bodyB = this.bodyList[j];
+
+                    if (Collision.IntersectCircles(bodyA.Position, bodyA.Radius, bodyB.Position, bodyB.Radius, out FlatVector normal, out float depth))
+                    {
+                        bodyA.Move(-normal * depth / 2f);
+                        bodyB.Move(normal * depth / 2f);
+                    }
+                }
+            }
+
 
             base.Update(gameTime);
         }
@@ -158,8 +175,8 @@ namespace PhysicsEngine
                 Vector2 position = FlatConverter.ToVector2(body.Position);
                 if(body.ShapeType is ShapeType.Circle)
                 {
-                    shapes.DrawCircleFill(position, body.Radius, 26, this.colors[i]);
-                    shapes.DrawCircle(position, body.Radius, 26, Color.White);
+                    shapes.DrawCircleFill(position, body.Radius, 25, this.colors[i]);
+                    shapes.DrawCircle(position, body.Radius, 25, Color.White);
                 }
                 else if (body.ShapeType is ShapeType.Box)
                 {
