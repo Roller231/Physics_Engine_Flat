@@ -17,6 +17,9 @@ namespace PhysicsEngine
 {
     public class Game1 : Game
     {
+
+        //public float rx;
+
         private GraphicsDeviceManager graphics;
         private Screen screen;  
         private Sprites sprites;
@@ -82,7 +85,7 @@ namespace PhysicsEngine
                 }    
                 else if(type == (int)ShapeType.Box)
                 {
-                    if (!FlatBody.CreateBoxBody(1f, 1f, new FlatVector(x, y), 2f, false, 0.5f, out body, out string errorMessage))
+                    if (!FlatBody.CreateBoxBody(2f, 2f, new FlatVector(x, y), 2f, false, 0.5f, out body, out string errorMessage))
                     {
                         throw new Exception();
                     }
@@ -129,25 +132,30 @@ namespace PhysicsEngine
 
                 float dx = 0f;
                 float dy = 0f;
+
                 float speed = 15f;
 
                 if(keyboard.IsKeyDown(Keys.Left)) { dx--; }
                 if(keyboard.IsKeyDown(Keys.Right)) { dx++; }
                 if(keyboard.IsKeyDown(Keys.Down)) { dy--; }
                 if(keyboard.IsKeyDown(Keys.Up)) { dy++; }
+                //if (keyboard.IsKeyDown(Keys.A)) { rx++; }
 
-                if(dx!=0 | dy != 0)
+                if (dx!=0 | dy != 0)
                 {
                     FlatVector direction = FlatMath.Normalize(new FlatVector(dx, dy));
                     FlatVector velocity = direction * speed * FlatUtil.GetElapsedTimeInSeconds(gameTime);
+
                     this.bodyList[0].Move(velocity);
                 }
             }
 
             for (int i = 0; i < this.bodyList.Count; i++)
             {
+                //body.Rotate(rx * 0.1f);
+                //rx = 0f;
+
                 FlatBody body = this.bodyList[i];
-                body.Rotate(MathF.PI / 2f * FlatUtil.GetElapsedTimeInSeconds(gameTime));
                 this.outlineColors[i] = Color.White;
             }
 
@@ -159,10 +167,16 @@ namespace PhysicsEngine
                 {
                     FlatBody bodyB = this.bodyList[j];
 
-                    if(Collision.IntersectPolygons(bodyA.GetTransformedVertice(), bodyB.GetTransformedVertice()))
+                    if(Collision.IntersectPolygons(
+                        bodyA.GetTransformedVertice(),
+                        bodyB.GetTransformedVertice(),
+                        out FlatVector normal, out float depth))
                     {
                         this.outlineColors[i] = Color.Red;
                         this.outlineColors[j] = Color.Red;
+
+                        bodyA.Move(-normal * depth / 2f);
+                        bodyB.Move(normal * depth / 2f);
                     }
 
                     //if (Collision.IntersectCircles(bodyA.Position, bodyA.Radius, bodyB.Position, bodyB.Radius, out FlatVector normal, out float depth))
