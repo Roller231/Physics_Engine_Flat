@@ -10,6 +10,120 @@ namespace FlatPhysics
     public static class Collision
     {
 
+        public static bool IntersectCirclePolygon(FlatVector circleCentre, float circleRadius, FlatVector[] vertices, out FlatVector normal, out float depth)
+        {
+            normal = FlatVector.Zero;
+            depth = float.MaxValue;
+
+            float axisDepth = 0;
+            float minA, maxA, minB, maxB;
+            FlatVector axis  = FlatVector.Zero;
+
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                FlatVector va = vertices[i];
+                FlatVector vb = vertices[(i + 1) % vertices.Length];
+
+                FlatVector edge = vb - va;
+                axis = new FlatVector(-edge.Y, edge.X);
+
+                Collision.ProjectVertices(vertices, axis, out  minA, out  maxA);
+                Collision.ProjectCircle(circleCentre, circleRadius, axis, out  minB, out  maxB);
+
+                if (minA >= maxB || minB >= maxA)
+                {
+                    return false;
+                }
+
+                axisDepth = MathF.Min(maxB - minA, maxA - minB);
+
+                if (axisDepth < depth)
+                {
+                    depth = axisDepth;
+                    normal = axis;
+                }
+
+
+            }
+
+            int cpIndex = Collision.FindClosestPointOnPolygon(circleCentre, vertices);
+            FlatVector cp = vertices[cpIndex];
+
+            axis = cp - circleCentre;
+
+
+            Collision.ProjectVertices(vertices, axis, out  minA, out  maxA);
+            Collision.ProjectCircle(circleCentre, circleRadius, axis, out  minB, out  maxB);
+
+            if (minA >= maxB || minB >= maxA)
+            {
+                return false;
+            }
+
+            axisDepth = MathF.Min(maxB - minA, maxA - minB);
+
+            if (axisDepth < depth)
+            {
+                depth = axisDepth;
+                normal = axis;
+            }
+
+            depth /= FlatMath.Length(normal);
+            normal = FlatMath.Normalize(normal);
+
+            FlatVector polygonCenter = Collision.FindArithmeticMean(vertices);
+
+            FlatVector direction = polygonCenter - circleCentre;
+
+            if (FlatMath.Dot(direction, normal) < 0f)
+            {
+                normal = -normal;
+            }
+
+            return true;
+        }
+
+        private static int FindClosestPointOnPolygon(FlatVector circleCentre, FlatVector[] vertices)
+        {
+            int result = -1;
+            float minDistance = float.MaxValue;
+
+            for(int i = 0; i < vertices.Length; i++)
+            {
+                FlatVector v = vertices[i];
+                float distance = FlatMath.Distance(v, circleCentre);
+
+                if(distance < minDistance)
+                {
+                    minDistance = distance;
+                    result = i;
+
+                }
+            }
+            return result;
+
+        }
+
+        private static void ProjectCircle(FlatVector centre, float radius, FlatVector axis, out float min, out float max)
+        {
+            FlatVector direction = FlatMath.Normalize(axis);
+            FlatVector directionAndRadius = direction * radius;
+
+            FlatVector p1 = centre + directionAndRadius;
+            FlatVector p2 = centre - directionAndRadius;
+
+            min = FlatMath.Dot(p1, axis);
+            max = FlatMath.Dot(p2, axis);
+
+            if(min > max)
+            {
+                float t = min;
+                min = max;
+                max = t;
+            }
+            
+        }
+
         //Теорема разделяющей оси для квадратов.
         public static bool IntersectPolygons(FlatVector[] verticesA, FlatVector[] verticesB, out FlatVector normal, out float depth)
         {
@@ -79,6 +193,8 @@ namespace FlatPhysics
             {
                 normal = -normal;
             }
+
+
 
 
             return true;

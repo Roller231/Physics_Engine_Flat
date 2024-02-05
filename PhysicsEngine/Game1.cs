@@ -69,7 +69,6 @@ namespace PhysicsEngine
             for(int i = 0; i < bodyCount; i++)
             {
                 int type = RandomHelper.RandomInteger(0, 2);
-                type = (int)ShapeType.Box;
 
                 FlatBody body = null;
 
@@ -167,23 +166,48 @@ namespace PhysicsEngine
                 {
                     FlatBody bodyB = this.bodyList[j];
 
-                    if(Collision.IntersectPolygons(
-                        bodyA.GetTransformedVertice(),
-                        bodyB.GetTransformedVertice(),
-                        out FlatVector normal, out float depth))
+                    if(bodyA.ShapeType is ShapeType.Box && bodyB.ShapeType is ShapeType.Circle)
                     {
-                        this.outlineColors[i] = Color.Red;
-                        this.outlineColors[j] = Color.Red;
+                        if (Collision.IntersectCirclePolygon(bodyB.Position, bodyB.Radius, bodyA.GetTransformedVertice(), out FlatVector normal , out float depth))
+                        {
+                            this.outlineColors[i] = Color.Red;
+                            this.outlineColors[j] = Color.Red;
 
-                        bodyA.Move(-normal * depth / 2f);
-                        bodyB.Move(normal * depth / 2f);
+                            bodyA.Move(normal * depth / 2f);
+                            bodyB.Move(-normal * depth / 2f);
+                        }
+                    }
+                    else if(bodyB.ShapeType is ShapeType.Box && bodyA.ShapeType is ShapeType.Circle)
+                    {
+                        if (Collision.IntersectCirclePolygon(bodyA.Position, bodyA.Radius, bodyB.GetTransformedVertice(), out FlatVector normal, out float depth))
+                        {
+                            this.outlineColors[i] = Color.Red;
+                            this.outlineColors[j] = Color.Red;
+
+                            bodyA.Move(-normal * depth / 2f);
+                            bodyB.Move(normal * depth / 2f);
+                        }
                     }
 
-                    //if (Collision.IntersectCircles(bodyA.Position, bodyA.Radius, bodyB.Position, bodyB.Radius, out FlatVector normal, out float depth))
+
+
+                    //if(Collision.IntersectPolygons(
+                    //    bodyA.GetTransformedVertice(),
+                    //    bodyB.GetTransformedVertice(),
+                    //    out FlatVector normal, out float depth))
                     //{
+                    //    this.outlineColors[i] = Color.Red;
+                    //    this.outlineColors[j] = Color.Red;
+
                     //    bodyA.Move(-normal * depth / 2f);
                     //    bodyB.Move(normal * depth / 2f);
                     //}
+
+                    ////if (Collision.IntersectCircles(bodyA.Position, bodyA.Radius, bodyB.Position, bodyB.Radius, out FlatVector normal, out float depth))
+                    ////{
+                    ////    bodyA.Move(-normal * depth / 2f);
+                    ////    bodyB.Move(normal * depth / 2f);
+                    ////}
                 }
             }
 
