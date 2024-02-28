@@ -140,13 +140,16 @@ namespace FlatPhysics
             return this.transformedVertices;
         }
 
-        public void Step(float time)
+        internal void Step(float time, FlatVector gravity)
         {
             //force = mass * acc
             //acc = force / mass
-            FlatVector acceleration = this.force / this.Mass;
-            this.linearVelocity += acceleration * time;
+            //FlatVector acceleration = this.force / this.Mass;
+            //this.linearVelocity += acceleration * time;
 
+            if (this.IsStatic) return;
+
+            this.linearVelocity += gravity * time;
             this.position += this.linearVelocity * time;
             this.rotation += this.rotationalVelocity * time;
 
