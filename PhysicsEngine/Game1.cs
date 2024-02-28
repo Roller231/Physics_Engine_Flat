@@ -133,6 +133,12 @@ namespace PhysicsEngine
 
             if (keyboard.IsKeyAvailable)
             {
+                if(keyboard.IsKeyClicked(Keys.L))
+                {
+                    Console.WriteLine($"Колличество тел: {this.world.BodyCount}");
+                    Console.WriteLine();
+                }
+
                 if (keyboard.IsKeyClicked(Keys.Escape))
                 {
                     this.Exit();
@@ -174,6 +180,26 @@ namespace PhysicsEngine
             }
 
             this.world.Step(FlatUtil.GetElapsedTimeInSeconds(gameTime));
+
+            this.camera.GetExtents(out _, out _, out float viewBottom, out _);
+
+            for (int i = 0; i < this.world.BodyCount; i++)
+            {
+                if(!this.world.GetBody(i, out FlatBody body))
+                {
+                    throw new ArgumentOutOfRangeException();
+                }
+
+                FlatAABB box = body.GetAABB();
+
+                if(box.Max.Y < viewBottom)
+                {
+                    this.world.RemoveBody(body);
+                    this.colors.RemoveAt(i);
+                    this.outlineColors.RemoveAt(i);
+                }
+
+            }
 
 
             base.Update(gameTime);
