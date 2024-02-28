@@ -120,6 +120,12 @@ namespace FlatPhysics
             return this.transformedVertices;
         }
 
+        public void Step(float time)
+        {
+            this.position += this.linearVelocity * time;
+            this.rotation += this.rotationalVelocity * time;
+        }
+
         public void Move(FlatVector amount)
         {
             this.position += amount;

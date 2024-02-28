@@ -26,7 +26,8 @@ namespace PhysicsEngine
         private Shapes shapes;
         private Camera camera;
 
-        private List<FlatBody> bodyList;
+        private FlatWorld world;
+
         private Color[] colors;
         private Color[] outlineColors;
 
@@ -61,7 +62,9 @@ namespace PhysicsEngine
 
             int bodyCount = 15;
             float padding = MathF.Abs(right - left) * 0.05f;
-            this.bodyList = new List<FlatBody>(bodyCount);
+
+            this.world = new FlatWorld();
+
             this.colors = new Color[bodyCount];
             this.outlineColors = new Color[bodyCount];
 
@@ -94,7 +97,7 @@ namespace PhysicsEngine
                     throw new Exception("ink type");
                 }
 
-                this.bodyList.Add(body);
+                this.world.AddBody(body);
                 this.colors[i] = RandomHelper.RandomColor();
                 this.outlineColors[i] = Color.White;
             }
@@ -140,77 +143,21 @@ namespace PhysicsEngine
                 if(keyboard.IsKeyDown(Keys.Up)) { dy++; }
                 //if (keyboard.IsKeyDown(Keys.A)) { rx++; }
 
+                if(!this.world.GetBody(0, out FlatBody body))
+                {
+                    throw new Exception("Не найдено тело с таким индексом.");
+                }
+
                 if (dx!=0 | dy != 0)
                 {
                     FlatVector direction = FlatMath.Normalize(new FlatVector(dx, dy));
                     FlatVector velocity = direction * speed * FlatUtil.GetElapsedTimeInSeconds(gameTime);
 
-                    this.bodyList[0].Move(velocity);
+                    body.Move(velocity);
                 }
             }
 
-            for (int i = 0; i < this.bodyList.Count; i++)
-            {
-                //body.Rotate(rx * 0.1f);
-                //rx = 0f;
-
-                FlatBody body = this.bodyList[i];
-                this.outlineColors[i] = Color.White;
-            }
-
-            for (int i = 0; i < this.bodyList.Count - 1; i++)
-            {
-                FlatBody bodyA = this.bodyList[i];
-
-                for (int j = i + 1; j < this.bodyList.Count; j++)
-                {
-                    FlatBody bodyB = this.bodyList[j];
-
-                    if(bodyA.ShapeType is ShapeType.Box && bodyB.ShapeType is ShapeType.Circle)
-                    {
-                        if (Collision.IntersectCirclePolygon(bodyB.Position, bodyB.Radius, bodyA.GetTransformedVertice(), out FlatVector normal , out float depth))
-                        {
-                            this.outlineColors[i] = Color.Red;
-                            this.outlineColors[j] = Color.Red;
-
-                            bodyA.Move(normal * depth / 2f);
-                            bodyB.Move(-normal * depth / 2f);
-                        }
-                    }
-                    else if(bodyB.ShapeType is ShapeType.Box && bodyA.ShapeType is ShapeType.Circle)
-                    {
-                        if (Collision.IntersectCirclePolygon(bodyA.Position, bodyA.Radius, bodyB.GetTransformedVertice(), out FlatVector normal, out float depth))
-                        {
-                            this.outlineColors[i] = Color.Red;
-                            this.outlineColors[j] = Color.Red;
-
-                            bodyA.Move(-normal * depth / 2f);
-                            bodyB.Move(normal * depth / 2f);
-                        }
-                    }
-
-
-
-                    //if(Collision.IntersectPolygons(
-                    //    bodyA.GetTransformedVertice(),
-                    //    bodyB.GetTransformedVertice(),
-                    //    out FlatVector normal, out float depth))
-                    //{
-                    //    this.outlineColors[i] = Color.Red;
-                    //    this.outlineColors[j] = Color.Red;
-
-                    //    bodyA.Move(-normal * depth / 2f);
-                    //    bodyB.Move(normal * depth / 2f);
-                    //}
-
-                    ////if (Collision.IntersectCircles(bodyA.Position, bodyA.Radius, bodyB.Position, bodyB.Radius, out FlatVector normal, out float depth))
-                    ////{
-                    ////    bodyA.Move(-normal * depth / 2f);
-                    ////    bodyB.Move(normal * depth / 2f);
-                    ////}
-                }
-            }
-
+            this.world.Step(FlatUtil.GetElapsedTimeInSeconds(gameTime));
 
             base.Update(gameTime);
         }
@@ -225,9 +172,12 @@ namespace PhysicsEngine
             this.shapes.Begin(this.camera);
 
 
-            for (int i = 0; i < this.bodyList.Count; i++)
+            for (int i = 0; i < this.world.BodyCount; i++)
             {
-                FlatBody body = this.bodyList[i];
+                if(!this.world.GetBody(i, out FlatBody body))
+                {
+                    throw new Exception("Не найдено тело с таким индексом.");
+                }
                 Vector2 position = FlatConverter.ToVector2(body.Position);
                 if(body.ShapeType is ShapeType.Circle)
                 {
