@@ -68,11 +68,28 @@ namespace FlatPhysics
                 {
                     FlatBody bodyB = this.bodyList[j];
 
+                    if(bodyA.IsStatic && bodyB.IsStatic)
+                    {
+                        continue;
+                    }
+
+
                     if(this.Collide(bodyA, bodyB, out FlatVector normal, out float depth))
                     {
-                        bodyA.Move(-normal * depth / 2f);
-                        bodyB.Move(normal * depth / 2f);
-
+                        if(bodyA.IsStatic)
+                        {
+                            bodyB.Move(normal * depth);
+                        }
+                        else if (bodyB.IsStatic)
+                        {
+                            bodyA.Move(-normal * depth);
+                        }
+                        else
+                        {
+                            bodyA.Move(-normal * depth / 2f);
+                            bodyB.Move(normal * depth / 2f);
+                        }
+ 
                         this.ResolveCollision(bodyA, bodyB, normal,depth);
                     }
                 }
@@ -83,14 +100,20 @@ namespace FlatPhysics
         {
             FlatVector relativeVelocity = bodyB.LinearVelocity - bodyA.LinearVelocity;
 
+            if(FlatMath.Dot(relativeVelocity, normal) > 0)
+            {
+                return;
+            }
+
             float e = MathF.Min(bodyA.Restitution, bodyB.Restitution);
 
             float j = -(1f + e) * FlatMath.Dot(relativeVelocity, normal);
-            j /= (1f / bodyA.Mass) + (1f / bodyB.Mass);
+            j /= bodyA.InvMass + bodyB.InvMass;
 
+            FlatVector impulse = j * normal;
 
-            bodyA.LinearVelocity -= j / bodyA.Mass * normal;
-            bodyB.LinearVelocity += j / bodyB.Mass * normal;
+            bodyA.LinearVelocity -= impulse * bodyA.InvMass;
+            bodyB.LinearVelocity += impulse * bodyB.InvMass;
         }
 
         public bool Collide(FlatBody bodyA, FlatBody bodyB, out FlatVector normal, out float depth)

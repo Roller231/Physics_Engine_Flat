@@ -19,6 +19,7 @@ namespace FlatPhysics
 
         public readonly float Density;
         public readonly float Mass;
+        public readonly float InvMass;
         public readonly float Restitution;
         public readonly float Area;
 
@@ -67,6 +68,15 @@ namespace FlatPhysics
             this.Width = width;
             this.Height = height;
             this.ShapeType = shapeType;
+
+            if (!this.IsStatic)
+            {
+                this.InvMass = 1f / this.Mass;
+            }
+            else
+            {
+                this.InvMass = 0;
+            }
 
             if (this.ShapeType is ShapeType.Box)
             {

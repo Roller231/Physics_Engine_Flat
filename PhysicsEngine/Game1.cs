@@ -60,7 +60,7 @@ namespace PhysicsEngine
 
             this.camera.GetExtents(out float left, out float right, out float bottom, out float top);
 
-            int bodyCount = 15;
+            int bodyCount = 45;
             float padding = MathF.Abs(right - left) * 0.05f;
 
             this.world = new FlatWorld();
@@ -78,16 +78,18 @@ namespace PhysicsEngine
                 float x = RandomHelper.RandomSingle(left + padding, right - padding);
                 float y = RandomHelper.RandomSingle(bottom + padding, top - padding);
 
+                bool isStatic = RandomHelper.RandomBooleon();
+
                 if(type == (int)ShapeType.Circle)
                 {
-                    if (!FlatBody.CreateCircleBody(1f, new FlatVector(x, y), 2f, false, 0.5f, out body, out string errorMessage))
+                    if (!FlatBody.CreateCircleBody(1f, new FlatVector(x, y), 2f, isStatic, 0.5f, out body, out string errorMessage))
                     {
                         throw new Exception();
                     }
                 }    
                 else if(type == (int)ShapeType.Box)
                 {
-                    if (!FlatBody.CreateBoxBody(2f, 2f, new FlatVector(x, y), 2f, false, 0.5f, out body, out string errorMessage))
+                    if (!FlatBody.CreateBoxBody(1.77f, 1.77f, new FlatVector(x, y), 2f, isStatic, 0.5f, out body, out string errorMessage))
                     {
                         throw new Exception();
                     }
@@ -98,8 +100,18 @@ namespace PhysicsEngine
                 }
 
                 this.world.AddBody(body);
-                this.colors[i] = RandomHelper.RandomColor();
-                this.outlineColors[i] = Color.White;
+
+                if (!isStatic)
+                {
+                    this.colors[i] = RandomHelper.RandomColor();
+                    this.outlineColors[i] = Color.White;
+                }
+                else
+                {
+                    this.colors[i] = new Color(40, 40, 40);
+                    this.outlineColors[i] = Color.Red;
+                }
+
             }
 
             base.Initialize();
@@ -184,7 +196,7 @@ namespace PhysicsEngine
                 if(body.ShapeType is ShapeType.Circle)
                 {
                     shapes.DrawCircleFill(position, body.Radius, 25, this.colors[i]);
-                    shapes.DrawCircle(position, body.Radius, 25, Color.White);
+                    shapes.DrawCircle(position, body.Radius, 25, this.outlineColors[i]);
                 }
                 else if (body.ShapeType is ShapeType.Box)
                 {
