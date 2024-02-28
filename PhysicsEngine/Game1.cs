@@ -135,7 +135,7 @@ namespace PhysicsEngine
                 float dx = 0f;
                 float dy = 0f;
 
-                float speed = 15f;
+                float forceMagnitude = 15f;
 
                 if(keyboard.IsKeyDown(Keys.Left)) { dx--; }
                 if(keyboard.IsKeyDown(Keys.Right)) { dx++; }
@@ -150,14 +150,16 @@ namespace PhysicsEngine
 
                 if (dx!=0 | dy != 0)
                 {
-                    FlatVector direction = FlatMath.Normalize(new FlatVector(dx, dy));
-                    FlatVector velocity = direction * speed * FlatUtil.GetElapsedTimeInSeconds(gameTime);
+                    FlatVector forceDirection = FlatMath.Normalize(new FlatVector(dx, dy));
+                    FlatVector force = forceDirection * forceMagnitude;
 
-                    body.Move(velocity);
+                    body.AddForce(force);
                 }
             }
 
             this.world.Step(FlatUtil.GetElapsedTimeInSeconds(gameTime));
+
+            this.WrapScreen();
 
             base.Update(gameTime);
         }
@@ -201,6 +203,29 @@ namespace PhysicsEngine
             this.screen.Present(this.sprites);
 
             base.Draw(gameTime);
+        }
+
+        private void WrapScreen()
+        {
+            this.camera.GetExtents(out Vector2 camMin, out Vector2 camMax);
+
+            float viewWidth = camMax.X - camMin.X;
+            float viewHeight = camMax.Y - camMin.Y;
+
+
+            for(int i = 0; i < this.world.BodyCount; i++)
+            {
+                if(!this.world.GetBody(i, out FlatBody body))
+                {
+                    throw new Exception("");
+                }
+                if(body.Position.X < camMin.X) { body.MoveTo(body.Position + new FlatVector(viewWidth, 0f)); }
+                if (body.Position.X > camMax.X) { body.MoveTo(body.Position - new FlatVector(viewWidth, 0f)); }
+                if (body.Position.Y < camMin.Y) { body.MoveTo(body.Position + new FlatVector(0f, viewHeight)); }
+                if (body.Position.Y > camMax.Y) { body.MoveTo(body.Position - new FlatVector(0f, viewHeight)); }
+
+            }
+
         }
     }
 }
