@@ -135,7 +135,7 @@ namespace PhysicsEngine
                 float dx = 0f;
                 float dy = 0f;
 
-                float forceMagnitude = 15f;
+                float forceMagnitude = 48f;
 
                 if(keyboard.IsKeyDown(Keys.Left)) { dx--; }
                 if(keyboard.IsKeyDown(Keys.Right)) { dx++; }
