@@ -22,6 +22,8 @@ namespace FlatPhysics
         private List<FlatManifold> contactList;
         private FlatVector gravity;
 
+        public List<FlatVector> contactPointsList;
+
         public int BodyCount
         {
             get { return bodyList.Count; }
@@ -32,6 +34,8 @@ namespace FlatPhysics
             this.gravity = new FlatVector(0f, -9.81f);
             this.bodyList = new List<FlatBody>();
             this.contactList = new List<FlatManifold> ();
+
+            this.contactPointsList = new List<FlatVector> ();
         }
 
         public void AddBody(FlatBody body)
@@ -59,6 +63,8 @@ namespace FlatPhysics
         public void Step(float time, int iterations)
         {
             iterations = FlatMath.Clamp(iterations, FlatWorld.MinIterations, FlatWorld.ManIterations);
+
+            this.contactPointsList.Clear();
 
             for (int it = 0; it < iterations; it++)
             {
@@ -88,7 +94,7 @@ namespace FlatPhysics
                         }
 
 
-                        if (this.Collide(bodyA, bodyB, out FlatVector normal, out float depth))
+                        if (Collision.Collide(bodyA, bodyB, out FlatVector normal, out float depth))
                         {
                             if (bodyA.IsStatic)
                             {
@@ -104,7 +110,9 @@ namespace FlatPhysics
                                 bodyB.Move(normal * depth / 2f);
                             }
 
-                            FlatManifold contact =  new FlatManifold(bodyA, bodyB, normal, depth, FlatVector.Zero, FlatVector.Zero,0);
+                            Collision.FindContactPoints(bodyA, bodyB, out FlatVector contact1, out FlatVector contact2, out int contactCount);
+
+                            FlatManifold contact =  new FlatManifold(bodyA, bodyB, normal, depth, contact1, contact2,contactCount);
                             this.contactList.Add(contact);
 
                         }
@@ -115,6 +123,16 @@ namespace FlatPhysics
                 {
                     FlatManifold contact = this.contactList[i];
                     this.ResolveCollision(in contact);
+
+                    if(contact.ContactCount > 0)
+                    {
+                        this.contactPointsList.Add(contact.Contact1);
+
+                        if(contact.ContactCount > 1)
+                        {
+                            this.contactPointsList.Add(contact.Contact2);
+                        }
+                    }
                 }
             }
         }
@@ -144,53 +162,7 @@ namespace FlatPhysics
             bodyB.LinearVelocity += impulse * bodyB.InvMass;
         }
 
-        public bool Collide(FlatBody bodyA, FlatBody bodyB, out FlatVector normal, out float depth)
-        {
-            normal = FlatVector.Zero;
-            depth = 0;
 
-            ShapeType  shapeTypeA = bodyA.ShapeType;
-            ShapeType  shapeTypeB = bodyB.ShapeType;
-
-            if(shapeTypeA is ShapeType.Box)
-            {
-                if(shapeTypeB is ShapeType.Box)
-                {
-                    return Collision.IntersectPolygons(
-                        bodyA.Position, bodyA.GetTransformedVertice(),
-                        bodyB.Position, bodyB.GetTransformedVertice(),
-                        out normal, out depth);
-                }
-                else if(shapeTypeB is ShapeType.Circle)
-                {
-                    bool result =  Collision.IntersectCirclePolygon(
-                        bodyB.Position, bodyB.Radius,
-                        bodyA.Position, bodyA.GetTransformedVertice(),
-                        out normal, out depth);
-
-                    normal = -normal;
-                    return result;
-                }
-            }
-            else if(shapeTypeA is ShapeType.Circle)
-            {
-                if (shapeTypeB is ShapeType.Box)
-                {
-                    return Collision.IntersectCirclePolygon(
-                        bodyA.Position, bodyA.Radius,
-                        bodyB.Position, bodyB.GetTransformedVertice(),
-                        out normal, out depth);
-                }
-                else if (shapeTypeB is ShapeType.Circle)
-                {
-                    return Collision.IntersectCircles(
-                        bodyA.Position, bodyA.Radius,
-                        bodyB.Position, bodyB.Radius,
-                        out normal, out depth);
-                }
-            }
-            return false;
-        }
 
     }
 }

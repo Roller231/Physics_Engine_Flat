@@ -246,6 +246,11 @@ namespace PhysicsEngine
                 }
             }
 
+            List<FlatVector> contactPoints = this.world?.contactPointsList;
+            for(int i = 0; i < contactPoints.Count; i++)
+            {
+                shapes.DrawBoxFill(FlatConverter.ToVector2( contactPoints[i]), 0.5f, 0.5f, Color.Orange);
+            }
 
             this.shapes.End();
 
