@@ -57,10 +57,24 @@ namespace FlatPhysics
             return value;
         }
 
+        public static float LengthSquared(FlatVector v)
+        {
+            return v.X * v.X + v.Y * v.Y;
+        }
+
         public static float Length(FlatVector v)
         {
-            return MathF.Sqrt (v.X * v.X + v.Y * v.Y);
-        }   
+            return MathF.Sqrt( v.X * v.X + v.Y * v.Y);
+        }
+
+        public static float DistanceSquared(FlatVector a, FlatVector b)
+        {
+            float dx = a.X - b.X;
+            float dy = a.Y - b.Y;
+            return dx * dx + dy * dy;
+
+        }
+
         public static float Distance(FlatVector a, FlatVector b)
         {
             float dx = a.X - b.X;
@@ -68,6 +82,8 @@ namespace FlatPhysics
             return MathF.Sqrt(dx * dx + dy * dy);
 
         }
+
+
         public static FlatVector Normalize(FlatVector v)
         {
             float len = FlatMath.Length(v);

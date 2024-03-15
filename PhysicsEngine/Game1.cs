@@ -33,7 +33,15 @@ namespace PhysicsEngine
 
         private Vector2[] vertexBuffer;
 
-        private Stopwatch timer;
+        private Stopwatch timer = new Stopwatch();
+        private Stopwatch sampleTimer;
+
+        private double totalWorldStepTimer = 0d;
+        private int totalBodyCount = 0;
+        private int totalSampleCount = 0;
+
+        private string worldStepTimeString = string.Empty;
+        private string bodyCountString   = string.Empty;
 
         public Game1()
         {
@@ -138,10 +146,10 @@ namespace PhysicsEngine
 
             if (keyboard.IsKeyAvailable)
             {
-                if(keyboard.IsKeyClicked(Keys.L))
+                if (keyboard.IsKeyClicked(Keys.L))
                 {
                     Console.WriteLine($"Колличество тел: {this.world.BodyCount}");
-                    Console.WriteLine($"Время шага: {Math.Round( this.timer.Elapsed.TotalMilliseconds, 4)}");
+                    Console.WriteLine($"Время шага: {Math.Round(this.timer.Elapsed.TotalMilliseconds, 4)}");
                     Console.WriteLine();
                 }
 
@@ -150,13 +158,14 @@ namespace PhysicsEngine
                     this.Exit();
                 }
                 if (keyboard.IsKeyClicked(Keys.A))
-                { 
+                {
                     this.camera.IncZoom();
                 }
                 if (keyboard.IsKeyClicked(Keys.Z))
                 {
                     this.camera.DecZoom();
                 }
+            }
 
 #if false
                 float dx = 0f;
@@ -182,12 +191,29 @@ namespace PhysicsEngine
 
                     body.AddForce(force);
                 }
-#endif
+
             }
 
-            this.timer.Restart();
+            if(this.sampleTimer.Elapsed.TotalSeconds > 1d)
+            {
+                this.bodyCountString = Math.Round( this.totalBodyCount / (double)this.totalSampleCount).ToString();
+                this.worldStepTimeString = Math.Round( this.totalWorldStepTimer / (double)this.totalSampleCount, 4).ToString();
+
+                this.totalBodyCount = 0;
+                this.totalWorldStepTimer = 0d;
+                this.totalSampleCount = 0;
+                this.sampleTimer.Restart();
+            }
+#endif
+            
+
+                this.timer.Restart();
             this.world.Step(FlatUtil.GetElapsedTimeInSeconds(gameTime), 20);
             this.timer.Stop();
+
+            this.totalWorldStepTimer += this.timer.Elapsed.TotalMilliseconds;
+            this.totalBodyCount += this.world.BodyCount;
+            this.totalSampleCount++;
 
 
             this.camera.GetExtents(out _, out _, out float viewBottom, out _);

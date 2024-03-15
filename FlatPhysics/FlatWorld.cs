@@ -83,12 +83,19 @@ namespace FlatPhysics
                 for (int i = 0; i < this.bodyList.Count - 1; i++)
                 {
                     FlatBody bodyA = this.bodyList[i];
+                    FlatAABB bodyA_aabb = bodyA.GetAABB();
 
                     for (int j = i + 1; j < this.bodyList.Count; j++)
                     {
                         FlatBody bodyB = this.bodyList[j];
+                        FlatAABB bodyB_aabb = bodyB.GetAABB();
 
                         if (bodyA.IsStatic && bodyB.IsStatic)
+                        {
+                            continue;
+                        }
+
+                        if(!Collision.IntersectAABBs(bodyA_aabb, bodyB_aabb))
                         {
                             continue;
                         }
@@ -126,11 +133,18 @@ namespace FlatPhysics
 
                     if(contact.ContactCount > 0)
                     {
-                        this.contactPointsList.Add(contact.Contact1);
+                        if (!this.contactPointsList.Contains(contact.Contact1))
+                        {
+                            this.contactPointsList.Add(contact.Contact1);
+                        }
+
 
                         if(contact.ContactCount > 1)
                         {
-                            this.contactPointsList.Add(contact.Contact2);
+                            if (!this.contactPointsList.Contains(contact.Contact2))
+                            {
+                                this.contactPointsList.Add(contact.Contact2);
+                            }
                         }
                     }
                 }

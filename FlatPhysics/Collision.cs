@@ -9,11 +9,43 @@ namespace FlatPhysics
 
     public static class Collision
     {
+        public static void PointSegmentDistance(FlatVector p,  FlatVector a, FlatVector b, out float distanceSqured, out FlatVector cp )
+        {
+            FlatVector ab = b - a;
+            FlatVector ap = p - a;
 
-        public static void FindContactPoints(
-            FlatBody bodyA, FlatBody bodyB,
-            out FlatVector contact1, out FlatVector contact2,
-            out int contactCount)
+            float proj = FlatMath.Dot(ap,ab);
+            float abLenSq = FlatMath.LengthSquared(ab);
+            float d = proj  / abLenSq;
+
+            if(d <= 0f)
+            {
+                cp = a;
+            }
+            else if (d >= 1f)
+            {
+                cp = b;
+            }
+            else 
+            {
+                cp = a + ab * d;
+            }
+
+            distanceSqured = FlatMath.DistanceSquared(p, cp);
+        }
+
+
+        public static bool IntersectAABBs(FlatAABB a, FlatAABB b)
+        {
+            if(a.Max.X <= b.Min.X || b.Max.X <= a.Min.X ||
+                a.Max.Y <= b.Min.Y || b.Max.Y <= a.Min.Y)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        public static void FindContactPoints(FlatBody bodyA, FlatBody bodyB, out FlatVector contact1, out FlatVector contact2, out int contactCount)
         {
             contact1 = FlatVector.Zero;
             contact2 = FlatVector.Zero;
@@ -30,19 +62,45 @@ namespace FlatPhysics
                 }
                 else if (shapeTypeB is ShapeType.Circle)
                 {
-
+                    Collision.FindContactPoint(bodyB.Position, bodyB.Radius, bodyA.Position, bodyA.GetTransformedVertice(), out  contact1);
+                    contactCount = 1;
                 }
             }
             else if (shapeTypeA is ShapeType.Circle)
             {
                 if (shapeTypeB is ShapeType.Box)
                 {
-
+                    Collision.FindContactPoint(bodyA.Position, bodyA.Radius, bodyB.Position, bodyB.GetTransformedVertice(), out contact1);
+                    contactCount = 1;
                 }
                 else if (shapeTypeB is ShapeType.Circle)
                 {
                     Collision.FindContactPoint(bodyA.Position, bodyA.Radius, bodyB.Position, out contact1);
                     contactCount = 1;
+                }
+            }
+        }
+
+        private static void FindContactPoint(
+            FlatVector circleCenter, float circleRadius,
+            FlatVector polygonCenter, FlatVector[]  polygonVerices,
+            out FlatVector cp)
+        {
+            cp = FlatVector.Zero;
+
+            float minDistanceSq = float.MaxValue;
+
+            for(int i = 0; i < polygonVerices.Length; i++)
+            {
+                FlatVector va = polygonVerices[i];
+                FlatVector vb = polygonVerices[(i + 1) % polygonVerices.Length];
+                
+                Collision.PointSegmentDistance(circleCenter, va, vb, out float distanceSq, out FlatVector  contact);
+
+                if(distanceSq < minDistanceSq)
+                {
+                    minDistanceSq = distanceSq;
+                    cp = contact;
                 }
             }
         }
@@ -55,7 +113,6 @@ namespace FlatPhysics
 
             
         }
-
 
         public static bool Collide(FlatBody bodyA, FlatBody bodyB, out FlatVector normal, out float depth)
         {
