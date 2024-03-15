@@ -13,9 +13,13 @@ namespace FlatPhysics
         public static readonly float MaxBodySize = 64f * 64f;
 
         public static readonly float MinDensity = 0.2f; //g/cm^3
-        public static readonly float MaxDensity = 22.6f; //g/cm^3
+        public static readonly float MaxDensity = 22.6f; //g/cm^3\
+
+        public static readonly int MinIterations = 1;
+        public static readonly int ManIterations = 128;
 
         private List<FlatBody> bodyList;
+        private List<FlatManifold> contactList;
         private FlatVector gravity;
 
         public int BodyCount
@@ -27,6 +31,7 @@ namespace FlatPhysics
         {
             this.gravity = new FlatVector(0f, -9.81f);
             this.bodyList = new List<FlatBody>();
+            this.contactList = new List<FlatManifold> ();
         }
 
         public void AddBody(FlatBody body)
@@ -51,53 +56,76 @@ namespace FlatPhysics
             return true;
         }
 
-        public void Step(float time)
+        public void Step(float time, int iterations)
         {
-            //Шаг перемещения
-            for (int i = 0; i < this.bodyList.Count; i++)
-            {
-                this.bodyList[i].Step(time, this.gravity);
-            }
+            iterations = FlatMath.Clamp(iterations, FlatWorld.MinIterations, FlatWorld.ManIterations);
 
-            //Шаг коллизий
-            for (int i = 0; i < this.bodyList.Count - 1; i++)
+            for (int it = 0; it < iterations; it++)
             {
-                FlatBody bodyA = this.bodyList[i];
 
-                for (int j = i + 1; j < this.bodyList.Count; j++)
+
+
+                //Шаг перемещения
+                for (int i = 0; i < this.bodyList.Count; i++)
                 {
-                    FlatBody bodyB = this.bodyList[j];
+                    this.bodyList[i].Step(time, this.gravity, iterations);
+                }
 
-                    if(bodyA.IsStatic && bodyB.IsStatic)
+                this.contactList.Clear();
+
+                //Шаг коллизий
+                for (int i = 0; i < this.bodyList.Count - 1; i++)
+                {
+                    FlatBody bodyA = this.bodyList[i];
+
+                    for (int j = i + 1; j < this.bodyList.Count; j++)
                     {
-                        continue;
-                    }
+                        FlatBody bodyB = this.bodyList[j];
+
+                        if (bodyA.IsStatic && bodyB.IsStatic)
+                        {
+                            continue;
+                        }
 
 
-                    if(this.Collide(bodyA, bodyB, out FlatVector normal, out float depth))
-                    {
-                        if(bodyA.IsStatic)
+                        if (this.Collide(bodyA, bodyB, out FlatVector normal, out float depth))
                         {
-                            bodyB.Move(normal * depth);
+                            if (bodyA.IsStatic)
+                            {
+                                bodyB.Move(normal * depth);
+                            }
+                            else if (bodyB.IsStatic)
+                            {
+                                bodyA.Move(-normal * depth);
+                            }
+                            else
+                            {
+                                bodyA.Move(-normal * depth / 2f);
+                                bodyB.Move(normal * depth / 2f);
+                            }
+
+                            FlatManifold contact =  new FlatManifold(bodyA, bodyB, normal, depth, FlatVector.Zero, FlatVector.Zero,0);
+                            this.contactList.Add(contact);
+
                         }
-                        else if (bodyB.IsStatic)
-                        {
-                            bodyA.Move(-normal * depth);
-                        }
-                        else
-                        {
-                            bodyA.Move(-normal * depth / 2f);
-                            bodyB.Move(normal * depth / 2f);
-                        }
- 
-                        this.ResolveCollision(bodyA, bodyB, normal,depth);
                     }
+                }
+                
+                for(int i = 0; i< this.contactList.Count; i++)
+                {
+                    FlatManifold contact = this.contactList[i];
+                    this.ResolveCollision(in contact);
                 }
             }
         }
 
-        public void ResolveCollision(FlatBody bodyA, FlatBody bodyB, FlatVector normal, float depth)
+        public void ResolveCollision(in FlatManifold contact)
         {
+            FlatBody bodyA = contact.BodyA;
+            FlatBody bodyB = contact.BodyB;
+            FlatVector normal = contact.Normal;
+            float depth = contact.Depth;
+
             FlatVector relativeVelocity = bodyB.LinearVelocity - bodyA.LinearVelocity;
 
             if(FlatMath.Dot(relativeVelocity, normal) > 0)

@@ -33,6 +33,8 @@ namespace PhysicsEngine
 
         private Vector2[] vertexBuffer;
 
+        private Stopwatch timer;
+
         public Game1()
         {
             this.graphics = new GraphicsDeviceManager(this);
@@ -77,6 +79,9 @@ namespace PhysicsEngine
 
             this.colors.Add(Color.DarkGreen);
             this.outlineColors.Add(Color.White);
+
+
+            this.timer = new Stopwatch();
 
             base.Initialize();
         }
@@ -136,6 +141,7 @@ namespace PhysicsEngine
                 if(keyboard.IsKeyClicked(Keys.L))
                 {
                     Console.WriteLine($"Колличество тел: {this.world.BodyCount}");
+                    Console.WriteLine($"Время шага: {Math.Round( this.timer.Elapsed.TotalMilliseconds, 4)}");
                     Console.WriteLine();
                 }
 
@@ -179,7 +185,10 @@ namespace PhysicsEngine
 #endif
             }
 
-            this.world.Step(FlatUtil.GetElapsedTimeInSeconds(gameTime));
+            this.timer.Restart();
+            this.world.Step(FlatUtil.GetElapsedTimeInSeconds(gameTime), 20);
+            this.timer.Stop();
+
 
             this.camera.GetExtents(out _, out _, out float viewBottom, out _);
 

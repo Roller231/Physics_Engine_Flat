@@ -184,14 +184,16 @@ namespace FlatPhysics
             return this.aabb;
         }
 
-        internal void Step(float time, FlatVector gravity)
+        internal void Step(float time, FlatVector gravity, int iterations)
         {
+            if (this.IsStatic) return;
+
             //force = mass * acc
             //acc = force / mass
             //FlatVector acceleration = this.force / this.Mass;
             //this.linearVelocity += acceleration * time;
 
-            if (this.IsStatic) return;
+            time /= (float)iterations;
 
             this.linearVelocity += gravity * time;
             this.position += this.linearVelocity * time;
