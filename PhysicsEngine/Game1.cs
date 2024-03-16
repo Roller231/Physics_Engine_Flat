@@ -28,9 +28,9 @@ namespace PhysicsEngine
 
         private FlatWorld world;
 
-        private List<Color> colors;
+        private List<FlatEntity> entityList;
+        private List<FlatEntity> entityRemovalList;
 
-        private Vector2[] vertexBuffer;
 
         private Stopwatch timer = new Stopwatch();
         private Stopwatch sampleTimer;
@@ -57,6 +57,7 @@ namespace PhysicsEngine
 
         protected override void Initialize()
         {
+            this.Window.Position = new Point(10, 40);
 
 
             FlatUtil.SetRelativeBackBufferSize(this.graphics, 0.85f);
@@ -65,11 +66,12 @@ namespace PhysicsEngine
             this.sprites = new Sprites(this);
             this.shapes = new Shapes(this);
             this.camera = new Camera(this.screen);
-            this.camera.Zoom = 24;
+            this.camera.Zoom = 20;
 
             this.camera.GetExtents(out float left, out float right, out float bottom, out float top);
 
-            this.colors = new List<Color>();
+            this.entityList = new List<FlatEntity>();
+            this.entityRemovalList = new List<FlatEntity>();
 
             this.world = new FlatWorld();
 
@@ -83,7 +85,7 @@ namespace PhysicsEngine
             groundBody.MoveTo(new FlatVector(0, -10));
 
             this.world.AddBody(groundBody);
-            this.colors.Add(Color.DarkGreen);
+            this.entityList.Add(new FlatEntity(groundBody, Color.DarkGreen));
 
             if (!FlatBody.CreateBoxBody(20f, 2f, 1f, true, 0.5f, out FlatBody ledgeBody1, out errorMessage))
             {
@@ -94,7 +96,7 @@ namespace PhysicsEngine
             ledgeBody1.Rotate(-MathHelper.TwoPi / 20f);
 
             this.world.AddBody(ledgeBody1);
-            this.colors.Add(Color.DarkMagenta);
+            this.entityList.Add(new FlatEntity(ledgeBody1, Color.DarkMagenta));
 
             if (!FlatBody.CreateBoxBody(20f, 2f, 1f, true, 0.5f, out FlatBody ledgeBody2, out errorMessage))
             {
@@ -104,7 +106,7 @@ namespace PhysicsEngine
             ledgeBody2.Rotate(MathHelper.TwoPi / 20f);
 
             this.world.AddBody(ledgeBody2);
-            this.colors.Add(Color.DarkOrange);
+            this.entityList.Add(new FlatEntity(ledgeBody2, Color.DarkSeaGreen));
 
 
 
@@ -128,39 +130,28 @@ namespace PhysicsEngine
             //add box on mouse click
             if (mouse.IsLeftMouseButtonReleased())
             {
-                float width = RandomHelper.RandomSingle(1f, 2f);
-                float height = RandomHelper.RandomSingle(1f, 2f);
+                float width = RandomHelper.RandomSingle(2f, 3f);
+                float height = RandomHelper.RandomSingle(2f, 3f);
 
                 FlatVector mouseWorldPosition =
                     FlatConverter.ToFlatVecor( mouse.GetMouseWorldPosition(this, this.screen, this.camera));
 
-                if(!FlatBody.CreateBoxBody(width, height, 2f, false, 0.6f, out FlatBody body, out string errorMesage))
-                {
-                    throw new Exception(errorMesage);
-                }
+                this.entityList.Add(new FlatEntity(this.world, width, height, false, mouseWorldPosition));
 
-                body.MoveTo(mouseWorldPosition);
-                this.world.AddBody(body);
-                this.colors.Add(RandomHelper.RandomColor());
+
             }
 
 
             //add circle on mouse click
             if (mouse.IsRightMouseButtonReleased())
             {
-                float radius = RandomHelper.RandomSingle(0.75f, 1.5f);
+                float radius = RandomHelper.RandomSingle(1.25f, 1.5f);
 
                 FlatVector mouseWorldPosition =
                     FlatConverter.ToFlatVecor(mouse.GetMouseWorldPosition(this, this.screen, this.camera));
 
-                if (!FlatBody.CreateCircleBody(radius, 2f, false, 0.6f, out FlatBody body, out string errorMesage))
-                {
-                    throw new Exception(errorMesage);
-                }
+                this.entityList.Add(new FlatEntity(this.world, radius, false, mouseWorldPosition));
 
-                body.MoveTo(mouseWorldPosition);
-                this.world.AddBody(body);
-                this.colors.Add(RandomHelper.RandomColor());
             }
 
             if (keyboard.IsKeyAvailable)
@@ -186,44 +177,6 @@ namespace PhysicsEngine
                 }
             }
 
-#if false
-                float dx = 0f;
-                float dy = 0f;
-
-                float forceMagnitude = 48f;
-
-                if(keyboard.IsKeyDown(Keys.Left)) { dx--; }
-                if(keyboard.IsKeyDown(Keys.Right)) { dx++; }
-                if(keyboard.IsKeyDown(Keys.Down)) { dy--; }
-                if(keyboard.IsKeyDown(Keys.Up)) { dy++; }
-                //if (keyboard.IsKeyDown(Keys.A)) { rx++; }
-
-                if(!this.world.GetBody(0, out FlatBody body))
-                {
-                    throw new Exception("Не найдено тело с таким индексом.");
-                }
-
-                if (dx!=0 | dy != 0)
-                {
-                    FlatVector forceDirection = FlatMath.Normalize(new FlatVector(dx, dy));
-                    FlatVector force = forceDirection * forceMagnitude;
-
-                    body.AddForce(force);
-                }
-
-            }
-
-            if(this.sampleTimer.Elapsed.TotalSeconds > 1d)
-            {
-                this.bodyCountString = Math.Round( this.totalBodyCount / (double)this.totalSampleCount).ToString();
-                this.worldStepTimeString = Math.Round( this.totalWorldStepTimer / (double)this.totalSampleCount, 4).ToString();
-
-                this.totalBodyCount = 0;
-                this.totalWorldStepTimer = 0d;
-                this.totalSampleCount = 0;
-                this.sampleTimer.Restart();
-            }
-#endif
             
 
                 this.timer.Restart();
@@ -237,23 +190,30 @@ namespace PhysicsEngine
 
             this.camera.GetExtents(out _, out _, out float viewBottom, out _);
 
-            for (int i = 0; i < this.world.BodyCount; i++)
+            this.entityRemovalList.Clear();
+
+            for (int i = 0; i < this.entityList.Count; i++)
             {
-                if(!this.world.GetBody(i, out FlatBody body))
-                {
-                    throw new ArgumentOutOfRangeException();
-                }
+                FlatEntity entity = this.entityList[i];
+                FlatBody body = entity.Body;
+
+                if (body.IsStatic) { continue; }
 
                 FlatAABB box = body.GetAABB();
 
-                if(box.Max.Y < viewBottom)
+                if (box.Max.Y < viewBottom)
                 {
-                    this.world.RemoveBody(body);
-                    this.colors.RemoveAt(i);
+                    this.entityRemovalList.Add(entity);
                 }
 
             }
 
+            for(int i = 0; i < this.entityRemovalList.Count; ++i)
+            {
+                FlatEntity entity = this.entityRemovalList[i];
+                this.world.RemoveBody(entity.Body);
+                this.entityList.Remove(entity);
+            }
 
             base.Update(gameTime);
         }
@@ -268,62 +228,25 @@ namespace PhysicsEngine
             this.shapes.Begin(this.camera);
 
 
-            for (int i = 0; i < this.world.BodyCount; i++)
+            for (int i = 0; i < this.entityList.Count; i++)
             {
-                if(!this.world.GetBody(i, out FlatBody body))
-                {
-                    throw new Exception("Не найдено тело с таким индексом.");
-                }
-                Vector2 position = FlatConverter.ToVector2(body.Position);
-                if(body.ShapeType is ShapeType.Circle)
-                {
-                    shapes.DrawCircleFill(position, body.Radius, 25, this.colors[i]);
-                    shapes.DrawCircle(position, body.Radius, 25, Color.White);
-                }
-                else if (body.ShapeType is ShapeType.Box)
-                {
-                    //shapes.DrawBox(position, body.Width, body.Height, Color.White);
-                    shapes.DrawBoxFill(position, body.Width, body.Height, body.Angle, this.colors[i]);
-                    shapes.DrawBox(position, body.Width, body.Height, body.Angle, Color.White);
-
-                }
+                this.entityList[i].Draw(this.shapes);
+                
             }
 
-            List<FlatVector> contactPoints = this.world?.contactPointsList;
-            for(int i = 0; i < contactPoints.Count; i++)
-            {
-                shapes.DrawBoxFill(FlatConverter.ToVector2( contactPoints[i]), 0.5f, 0.5f, Color.Orange);
-            }
+            //List<FlatVector> contactPoints = this.world?.contactPointsList;
+            //for (int i = 0; i < contactpoints.count; i++)
+            //{
+            //    shapes.drawboxfill(flatconverter.tovector2(contactpoints[i]), 0.5f, 0.5f, color.orange);
+            //}
 
             this.shapes.End();
 
             this.screen.Unset();
             this.screen.Present(this.sprites);
-
+             
             base.Draw(gameTime);
         }
 
-        private void WrapScreen()
-        {
-            this.camera.GetExtents(out Vector2 camMin, out Vector2 camMax);
-
-            float viewWidth = camMax.X - camMin.X;
-            float viewHeight = camMax.Y - camMin.Y;
-
-
-            for(int i = 0; i < this.world.BodyCount; i++)
-            {
-                if(!this.world.GetBody(i, out FlatBody body))
-                {
-                    throw new Exception("");
-                }
-                if(body.Position.X < camMin.X) { body.MoveTo(body.Position + new FlatVector(viewWidth, 0f)); }
-                if (body.Position.X > camMax.X) { body.MoveTo(body.Position - new FlatVector(viewWidth, 0f)); }
-                if (body.Position.Y < camMin.Y) { body.MoveTo(body.Position + new FlatVector(0f, viewHeight)); }
-                if (body.Position.Y > camMax.Y) { body.MoveTo(body.Position - new FlatVector(0f, viewHeight)); }
-
-            }
-
-        }
     }
 }

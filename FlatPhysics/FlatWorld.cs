@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace FlatPhysics
 {
+
     public sealed class FlatWorld
     {
         public static readonly float MinBodySize = 0.01f * 0.01f;
@@ -19,10 +20,10 @@ namespace FlatPhysics
         public static readonly int ManIterations = 128;
 
         private List<FlatBody> bodyList;
-        private List<FlatManifold> contactList;
+        private List<(int, int)> contactpairs;
         private FlatVector gravity;
 
-        public List<FlatVector> contactPointsList;
+        //public List<FlatVector> contactPointsList;
 
         public int BodyCount
         {
@@ -33,9 +34,9 @@ namespace FlatPhysics
         {
             this.gravity = new FlatVector(0f, -9.81f);
             this.bodyList = new List<FlatBody>();
-            this.contactList = new List<FlatManifold> ();
+            this.contactpairs = new List<(int, int)> ();
 
-            this.contactPointsList = new List<FlatVector> ();
+            //this.contactPointsList = new List<FlatVector> ();
         }
 
         public void AddBody(FlatBody body)
@@ -60,94 +61,115 @@ namespace FlatPhysics
             return true;
         }
 
-        public void Step(float time, int iterations)
+        public void Step(float time, int totalIterations)
         {
-            iterations = FlatMath.Clamp(iterations, FlatWorld.MinIterations, FlatWorld.ManIterations);
+            totalIterations = FlatMath.Clamp(totalIterations, FlatWorld.MinIterations, FlatWorld.ManIterations);
 
-            this.contactPointsList.Clear();
+            //this.contactPointsList.Clear();
 
-            for (int it = 0; it < iterations; it++)
+            for (int currentIteration = 0; currentIteration < totalIterations; currentIteration++)
             {
 
+                this.contactpairs.Clear();
 
+                this.StepBodies(time, totalIterations);
+                this.BroadPhase();
+                this.NarrowPhase();
 
-                //Шаг перемещения
-                for (int i = 0; i < this.bodyList.Count; i++)
+            }
+        }
+
+        public void BroadPhase()
+        {
+            //Шаг коллизий
+            for (int i = 0; i < this.bodyList.Count - 1; i++)
+            {
+                FlatBody bodyA = this.bodyList[i];
+                FlatAABB bodyA_aabb = bodyA.GetAABB();
+
+                for (int j = i + 1; j < this.bodyList.Count; j++)
                 {
-                    this.bodyList[i].Step(time, this.gravity, iterations);
-                }
+                    FlatBody bodyB = this.bodyList[j];
+                    FlatAABB bodyB_aabb = bodyB.GetAABB();
 
-                this.contactList.Clear();
-
-                //Шаг коллизий
-                for (int i = 0; i < this.bodyList.Count - 1; i++)
-                {
-                    FlatBody bodyA = this.bodyList[i];
-                    FlatAABB bodyA_aabb = bodyA.GetAABB();
-
-                    for (int j = i + 1; j < this.bodyList.Count; j++)
+                    if (bodyA.IsStatic && bodyB.IsStatic)
                     {
-                        FlatBody bodyB = this.bodyList[j];
-                        FlatAABB bodyB_aabb = bodyB.GetAABB();
-
-                        if (bodyA.IsStatic && bodyB.IsStatic)
-                        {
-                            continue;
-                        }
-
-                        if(!Collision.IntersectAABBs(bodyA_aabb, bodyB_aabb))
-                        {
-                            continue;
-                        }
-
-
-                        if (Collision.Collide(bodyA, bodyB, out FlatVector normal, out float depth))
-                        {
-                            if (bodyA.IsStatic)
-                            {
-                                bodyB.Move(normal * depth);
-                            }
-                            else if (bodyB.IsStatic)
-                            {
-                                bodyA.Move(-normal * depth);
-                            }
-                            else
-                            {
-                                bodyA.Move(-normal * depth / 2f);
-                                bodyB.Move(normal * depth / 2f);
-                            }
-
-                            Collision.FindContactPoints(bodyA, bodyB, out FlatVector contact1, out FlatVector contact2, out int contactCount);
-
-                            FlatManifold contact =  new FlatManifold(bodyA, bodyB, normal, depth, contact1, contact2,contactCount);
-                            this.contactList.Add(contact);
-
-                        }
+                        continue;
                     }
+
+                    if (!Collision.IntersectAABBs(bodyA_aabb, bodyB_aabb))
+                    {
+                        continue;
+                    }
+
+
+                    this.contactpairs.Add((i, j));
                 }
-                
-                for(int i = 0; i< this.contactList.Count; i++)
+            }
+        }
+
+        public void NarrowPhase()
+        {
+
+            for (int i = 0; i < this.contactpairs.Count; i++)
+            {
+                (int, int) pair = this.contactpairs[i];
+                FlatBody bodyA = this.bodyList[pair.Item1];
+                FlatBody bodyB = this.bodyList[pair.Item2];
+
+                if (Collision.Collide(bodyA, bodyB, out FlatVector normal, out float depth))
                 {
-                    FlatManifold contact = this.contactList[i];
+                    this.SeparateBodies(bodyA, bodyB, normal * depth);
+                    Collision.FindContactPoints(bodyA, bodyB, out FlatVector contact1, out FlatVector contact2, out int contactCount);
+                    FlatManifold contact = new FlatManifold(bodyA, bodyB, normal, depth, contact1, contact2, contactCount);
+
                     this.ResolveCollision(in contact);
-
-                    if(contact.ContactCount > 0)
-                    {
-                        if (!this.contactPointsList.Contains(contact.Contact1))
-                        {
-                            this.contactPointsList.Add(contact.Contact1);
-                        }
-
-
-                        if(contact.ContactCount > 1)
-                        {
-                            if (!this.contactPointsList.Contains(contact.Contact2))
-                            {
-                                this.contactPointsList.Add(contact.Contact2);
-                            }
-                        }
-                    }
                 }
+
+
+                //(DEBUG)
+                //if (currentIteration == totalIterations - 1)
+                //{
+                //    if (!this.contactPointsList.Contains(contact.Contact1))
+                //    {
+                //        this.contactPointsList.Add(contact.Contact1);
+                //    }
+
+
+                //    if (contact.ContactCount > 1)
+                //    {
+                //        if (!this.contactPointsList.Contains(contact.Contact2))
+                //        {
+                //            this.contactPointsList.Add(contact.Contact2);
+                //        }
+                //    }
+                //}
+            }
+        }
+
+        public void StepBodies(float time, int totalIterations)
+        {
+            //Шаг перемещения
+            for (int i = 0; i < this.bodyList.Count; i++)
+            {
+                this.bodyList[i].Step(time, this.gravity, totalIterations);
+            }
+        }
+
+        private void SeparateBodies(FlatBody  bodyA, FlatBody bodyB, FlatVector mtv)
+        {
+            if (bodyA.IsStatic)
+            {
+                bodyB.Move(mtv);
+            }
+            else if (bodyB.IsStatic)
+            {
+                bodyA.Move(-mtv);
+            }
+            else
+            {
+                bodyA.Move(-mtv / 2f);
+                bodyB.Move(mtv / 2f);
             }
         }
 
