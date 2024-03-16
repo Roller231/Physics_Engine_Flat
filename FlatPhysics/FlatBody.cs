@@ -51,6 +51,12 @@ namespace FlatPhysics
         {
             get { return this.angle; }
         }
+        
+        public float AngularVelocity
+        {
+            get { return this.angularVelocity; }
+            internal set { this.angularVelocity = value; }
+        }
 
         private FlatBody(float density, float mass, float inertia, float restitution, float area,
             bool isStatic, float radius, float width, float height, FlatVector[] vertices, ShapeType shapeType)

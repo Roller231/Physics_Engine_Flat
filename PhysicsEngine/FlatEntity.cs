@@ -56,8 +56,15 @@ namespace PhysicsEngine
 
             if (this.Body.ShapeType == ShapeType.Circle)
             {
+                Vector2 va = Vector2.Zero;
+                Vector2 vb = new Vector2(Body.Radius, 0f);
+                Flat.FlatTransform transform = new Flat.FlatTransform(position, Body.Angle, 1);
+                va = Flat.FlatUtil.Transform(va, transform);
+                vb = Flat.FlatUtil.Transform(vb, transform);
+
                 shapes.DrawCircleFill(position, this.Body.Radius, 25, this.Color);
                 shapes.DrawCircle(position, this.Body.Radius, 25, Color.White);
+                shapes.DrawLine(va, vb, Color.White);
             }
             else if (this.Body.ShapeType == ShapeType.Box)
             {
