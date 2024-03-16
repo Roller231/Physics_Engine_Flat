@@ -24,8 +24,10 @@ namespace FlatPhysics
 
         private FlatVector[] contactList;
         private FlatVector[] impulseList;
+        private FlatVector[] impulseFrictionList;
         private FlatVector[] raList;
         private FlatVector[] rbList;
+        private float[] jList;
 
         public int BodyCount
         {
@@ -40,8 +42,10 @@ namespace FlatPhysics
 
             this.contactList = new FlatVector[2];
             this.impulseList = new FlatVector[2];
+            this.impulseFrictionList = new FlatVector[2];
             this.raList = new FlatVector[2];
             this.rbList = new FlatVector[2];
+            this.jList = new float[2];
         }
 
         public void AddBody(FlatBody body)
@@ -120,7 +124,7 @@ namespace FlatPhysics
                     this.SeparateBodies(bodyA, bodyB, normal * depth);
                     Collision.FindContactPoints(bodyA, bodyB, out FlatVector contact1, out FlatVector contact2, out int contactCount);
                     FlatManifold contact = new FlatManifold(bodyA, bodyB, normal, depth, contact1, contact2, contactCount);
-                    this.ResolveCollisionWithRotation(in contact);
+                    this.ResolveCollisionWithRotationAndFriction(in contact);
                 }
 
             }
@@ -249,5 +253,155 @@ namespace FlatPhysics
                 bodyB.AngularVelocity += FlatMath.Cross(rb, impulse) * bodyB.InvInertia;
             }
         }
+
+        public void ResolveCollisionWithRotationAndFriction(in FlatManifold contact)
+        {
+            FlatBody bodyA = contact.BodyA;
+            FlatBody bodyB = contact.BodyB;
+            FlatVector normal = contact.Normal;
+            FlatVector contact1 = contact.Contact1;
+            FlatVector contact2 = contact.Contact2;
+            int contactCount = contact.ContactCount;
+
+            float e = MathF.Min(bodyA.Restitution, bodyB.Restitution);
+
+            float sf = (bodyA.StaticFriction + bodyB.StaticFriction) * 0.5f;
+            float df = (bodyA.DynamicFriction + bodyB.DynamicFriction) * 0.5f;
+
+            this.contactList[0] = contact1;
+            this.contactList[1] = contact2;
+
+            for (int i = 0; i < contactCount; i++)
+            {
+                this.impulseList[i] = FlatVector.Zero;
+                this.raList[i] = FlatVector.Zero;
+                this.rbList[i] = FlatVector.Zero;
+                this.impulseFrictionList[i] = FlatVector.Zero;
+                this.jList[i] = 0;
+            }
+
+            for (int i = 0; i < contactCount; i++)
+            {
+                FlatVector ra = contactList[i] - bodyA.Position;
+                FlatVector rb = contactList[i] - bodyB.Position;
+
+                raList[i] = ra;
+                rbList[i] = rb;
+
+                FlatVector raPerp = new FlatVector(-ra.Y, ra.X);
+                FlatVector rbPerp = new FlatVector(-rb.Y, rb.X);
+
+                FlatVector angularLinearVelocityA = raPerp * bodyA.AngularVelocity;
+                FlatVector angularLinearVelocityB = rbPerp * bodyB.AngularVelocity;
+
+                FlatVector relativeVelocity =
+                    (bodyB.LinearVelocity + angularLinearVelocityB) -
+                    (bodyA.LinearVelocity + angularLinearVelocityA);
+
+                float contactVelocityMag = FlatMath.Dot(relativeVelocity, normal);
+
+                if (contactVelocityMag > 0f)
+                {
+                    continue;
+                }
+
+                float raPerpDotN = FlatMath.Dot(raPerp, normal);
+                float rbPerpDotN = FlatMath.Dot(rbPerp, normal);
+
+                float denom = bodyA.InvMass + bodyB.InvMass +
+                    (raPerpDotN * raPerpDotN) * bodyA.InvInertia +
+                    (rbPerpDotN * rbPerpDotN) * bodyB.InvInertia;
+
+                float j = -(1f + e) * contactVelocityMag;
+                j /= denom;
+                j /= (float)contactCount;
+
+                jList[i] = j;
+
+                FlatVector impulse = j * normal;
+                impulseList[i] = impulse;
+            }
+
+            for (int i = 0; i < contactCount; i++)
+            {
+                FlatVector impulse = impulseList[i];
+                FlatVector ra = raList[i];
+                FlatVector rb = rbList[i];
+
+                bodyA.LinearVelocity += -impulse * bodyA.InvMass;
+                bodyA.AngularVelocity += -FlatMath.Cross(ra, impulse) * bodyA.InvInertia;
+                bodyB.LinearVelocity += impulse * bodyB.InvMass;
+                bodyB.AngularVelocity += FlatMath.Cross(rb, impulse) * bodyB.InvInertia;
+            }
+
+
+            for (int i = 0; i < contactCount; i++)
+            {
+                FlatVector ra = contactList[i] - bodyA.Position;
+                FlatVector rb = contactList[i] - bodyB.Position;
+
+                raList[i] = ra;
+                rbList[i] = rb;
+
+                FlatVector raPerp = new FlatVector(-ra.Y, ra.X);
+                FlatVector rbPerp = new FlatVector(-rb.Y, rb.X);
+
+                FlatVector angularLinearVelocityA = raPerp * bodyA.AngularVelocity;
+                FlatVector angularLinearVelocityB = rbPerp * bodyB.AngularVelocity;
+
+                FlatVector relativeVelocity =
+                    (bodyB.LinearVelocity + angularLinearVelocityB) -
+                    (bodyA.LinearVelocity + angularLinearVelocityA);
+
+                FlatVector tangent = relativeVelocity - FlatMath.Dot(relativeVelocity, normal) * normal;
+
+                if(FlatMath.NearlyEqual(tangent, FlatVector.Zero))
+                {
+                    continue;
+                }
+                else
+                {
+                    tangent = FlatMath.Normalize(tangent);
+                }
+                float raPerpDotT = FlatMath.Dot(raPerp, tangent);
+                float rbPerpDotT = FlatMath.Dot(rbPerp, tangent);
+
+                float denom = bodyA.InvMass + bodyB.InvMass +
+                    (raPerpDotT * raPerpDotT) * bodyA.InvInertia +
+                    (rbPerpDotT * rbPerpDotT) * bodyB.InvInertia;
+
+                float jt = -FlatMath.Dot(relativeVelocity, tangent); ;
+                jt /= denom;
+                jt /= (float)contactCount;
+
+                FlatVector impulseFriction;
+
+                float j = jList[i];
+
+                if (MathF.Abs(jt) <= j * sf)
+                {
+                    impulseFriction = jt * tangent;
+                }
+                else
+                {
+                    impulseFriction = -j * tangent * df;
+                }
+                 
+                impulseFrictionList[i] = impulseFriction;
+            }
+
+            for (int i = 0; i < contactCount; i++)
+            {
+                FlatVector impulseFriction = this.impulseFrictionList[i];
+                FlatVector ra = raList[i];
+                FlatVector rb = rbList[i];
+
+                bodyA.LinearVelocity += -impulseFriction * bodyA.InvMass;
+                bodyA.AngularVelocity += -FlatMath.Cross(ra, impulseFriction) * bodyA.InvInertia;
+                bodyB.LinearVelocity += impulseFriction * bodyB.InvMass;
+                bodyB.AngularVelocity += FlatMath.Cross(rb, impulseFriction) * bodyB.InvInertia;
+            }
+        }
+
     }
 }

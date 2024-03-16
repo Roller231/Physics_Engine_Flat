@@ -28,6 +28,8 @@ namespace FlatPhysics
         public readonly float Radius;
         public readonly float Width;
         public readonly float Height;
+        public readonly float StaticFriction;
+        public readonly float DynamicFriction;
 
         private readonly FlatVector[] vertices;
         private FlatVector[] transformedVertices;
@@ -79,6 +81,8 @@ namespace FlatPhysics
             this.Width = width;
             this.Height = height;
             this.ShapeType = shapeType;
+            this.StaticFriction = 0.6f;
+            this.DynamicFriction = 0.4f;
 
 
             if (this.ShapeType is ShapeType.Box)
