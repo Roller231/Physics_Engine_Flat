@@ -12,11 +12,11 @@ namespace FlatPhysics
     {
         private FlatVector position;
         private FlatVector linearVelocity;
-        private float rotation;
-        private float rotationalVelocity;
-
+        private float angle;
+        private float angularVelocity;
         private FlatVector force;
 
+        public readonly ShapeType ShapeType;
         public readonly float Density;
         public readonly float Mass;
         public readonly float InvMass;
@@ -24,22 +24,17 @@ namespace FlatPhysics
         public readonly float Area;
         public readonly float Inertia;
         public readonly float InvInertia;
-
         public readonly bool IsStatic;
-
         public readonly float Radius;
         public readonly float Width;
         public readonly float Height;
 
         private readonly FlatVector[] vertices;
-        public readonly int[] Triangles;
         private FlatVector[] transformedVertices;
         private FlatAABB aabb;
 
         private bool transformUpdateRequired;
         private bool aabbUpdateRequired;
-
-        public readonly ShapeType ShapeType;
 
         public FlatVector Position
         {
@@ -47,55 +42,47 @@ namespace FlatPhysics
         }
 
         public FlatVector LinearVelocity
-        {
+        { 
             get { return this.linearVelocity; }
             internal set { this.linearVelocity = value; }
         }
 
-        private FlatBody(FlatVector position, float density, float mass, float restitution, float area,
-            bool isStatic, float radius, float width, float height, ShapeType shapeType)
+        public float Angle
         {
-            this.position = position;
+            get { return this.angle; }
+        }
+
+        private FlatBody(float density, float mass, float inertia, float restitution, float area,
+            bool isStatic, float radius, float width, float height, FlatVector[] vertices, ShapeType shapeType)
+        {
+            this.position = FlatVector.Zero;
             this.linearVelocity = FlatVector.Zero;
-            this.rotation = 0f;
-            this.rotationalVelocity = 0f;
+            this.angle = 0f;
+            this.angularVelocity = 0f;
 
             this.force = FlatVector.Zero;
-
             this.Density = density;
             this.Mass = mass;
+            this.InvMass = mass > 0f ? 1f / mass : 0f;
+            this.Inertia = inertia;
+            this.InvInertia = inertia > 0f ? 1f / inertia : 0f;
             this.Restitution = restitution;
             this.Area = area;
-
             this.IsStatic = isStatic;
             this.Radius = radius;
             this.Width = width;
             this.Height = height;
             this.ShapeType = shapeType;
 
-            this.Inertia = this.CalculateRotationalInertia();                       
-
-            if (!this.IsStatic)
-            {
-                this.InvMass = 1f / this.Mass;
-                this.InvInertia = 1f /  this.Inertia;
-            }
-            else
-            {
-                this.InvMass = 0;
-                this.InvInertia = 0;
-            }
 
             if (this.ShapeType is ShapeType.Box)
             {
-                this.vertices = FlatBody.CreateBoxVertices(this.Width, this.Height);
-                this.Triangles = FlatBody.CreateBoxTriangles();
+                this.vertices = vertices;
                 this.transformedVertices = new FlatVector[this.vertices.Length];
             }
             else
             {
                 this.vertices = null;
-                Triangles = null;
                 this.transformedVertices = null;
             }
 
@@ -103,21 +90,6 @@ namespace FlatPhysics
             this.aabbUpdateRequired = true;
         }
 
-        private  float CalculateRotationalInertia()
-        {
-            if(this.ShapeType  is ShapeType.Circle)
-            {
-                return (1f / 2) * this.Mass * (this.Radius * this.Radius);
-            }
-            else if(this.ShapeType is ShapeType.Box)
-            {
-                return (1f / 12)  * this.Mass * (this.Width * this.Width + this.Height * this.Height);
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException(nameof(this.ShapeType) + " Недопустимый тип фигуры");
-            }
-        } 
 
         private static FlatVector[] CreateBoxVertices(float width, float height)
         {
@@ -151,7 +123,7 @@ namespace FlatPhysics
         {
             if (this.transformUpdateRequired)
             {
-                FlatTransform transform = new FlatTransform(this.position, this.rotation);
+                FlatTransform transform = new FlatTransform(this.position, this.angle);
 
                 for (int i = 0; i < this.vertices.Length; i++)
                 {
@@ -219,7 +191,7 @@ namespace FlatPhysics
 
             this.linearVelocity += gravity * time;
             this.position += this.linearVelocity * time;
-            this.rotation += this.rotationalVelocity * time;
+            this.angle += this.angularVelocity * time;
 
             this.force = FlatVector.Zero;
             this.transformUpdateRequired = true;
@@ -242,17 +214,23 @@ namespace FlatPhysics
 
         public void Rotate(float amount)
         {
-            this.rotation += amount;
+            this.angle += amount;
             this.transformUpdateRequired = true;
             this.aabbUpdateRequired = true;
         }
 
+        public void RotateTo(float angle)
+        {
+            this.angle = angle;
+            this.transformUpdateRequired = true;
+            this.aabbUpdateRequired = true;
+        }
         public void AddForce(FlatVector amount)
         {
             this.force = amount;
         }
 
-        public static bool CreateCircleBody(float radius, FlatVector position, float density, bool isStatic, float restitution, out FlatBody body, out string errorMessage)
+        public static bool CreateCircleBody(float radius, float density, bool isStatic, float restitution, out FlatBody body, out string errorMessage)
         {
             body = null;
             errorMessage = string.Empty;
@@ -285,14 +263,21 @@ namespace FlatPhysics
 
             restitution = FlatMath.Clamp(restitution, 0f, 1f);
 
-            // mass = area * depth * density
-            float mass = area * density;
+            float mass = 0f;
+            float inertia = 0f;
 
-            body = new FlatBody(position, density, mass, restitution, area, isStatic, radius, 0f, 0f, ShapeType.Circle);
+            if (!isStatic)
+            {
+                // mass = area * depth * density
+                 mass = area * density;
+                 inertia = (1f / 2) * mass * (radius * radius);
+            }
+
+            body = new FlatBody( density, mass, inertia, restitution, area, isStatic, radius, 0f, 0f, null, ShapeType.Circle);
             return true;
         }
 
-        public static bool CreateBoxBody(float width, float height, FlatVector position, float density, bool isStatic, float restitution, out FlatBody body, out string errorMessage)
+        public static bool CreateBoxBody(float width, float height, float density, bool isStatic, float restitution, out FlatBody body, out string errorMessage)
         {
             body = null;
             errorMessage = string.Empty;
@@ -325,10 +310,19 @@ namespace FlatPhysics
 
             restitution = FlatMath.Clamp(restitution, 0f, 1f);
 
-            // mass = area * depth * density
-            float mass = area * density;
+            float mass = 0f;
+            float inertia = 0f;
 
-            body = new FlatBody(position, density, mass, restitution, area, isStatic, 0f, width, height, ShapeType.Box);
+            if (!isStatic)
+            {
+                // mass = area * depth * density
+                 mass = area * density;
+                 inertia = (1f / 12) * mass * (width * width + height * height);
+            }
+
+            FlatVector[] vertices = FlatBody.CreateBoxVertices(width, height);
+
+            body = new FlatBody( density, mass, inertia, restitution, area, isStatic, 0f, width, height,vertices, ShapeType.Box);
             return true;
         }
     }

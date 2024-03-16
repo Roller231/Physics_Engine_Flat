@@ -29,7 +29,6 @@ namespace PhysicsEngine
         private FlatWorld world;
 
         private List<Color> colors;
-        private List<Color> outlineColors;
 
         private Vector2[] vertexBuffer;
 
@@ -71,43 +70,41 @@ namespace PhysicsEngine
             this.camera.GetExtents(out float left, out float right, out float bottom, out float top);
 
             this.colors = new List<Color>();
-            this.outlineColors = new List<Color>();
 
             this.world = new FlatWorld();
 
             float padding = MathF.Abs(right - left) * 0.10f;
 
-            if(!FlatBody.CreateBoxBody(right - left - padding * 2, 3f, new FlatVector(0, -10),
+            if(!FlatBody.CreateBoxBody(right - left - padding * 2, 3f,
                 1f, true, 0.5f, out FlatBody groundBody, out string errorMessage))
             {
                 throw new Exception(errorMessage);
             }
+            groundBody.MoveTo(new FlatVector(0, -10));
 
             this.world.AddBody(groundBody);
             this.colors.Add(Color.DarkGreen);
-            this.outlineColors.Add(Color.White);
 
-            if (!FlatBody.CreateBoxBody(20f, 2f, new FlatVector(-10, 2.5f), 1f, true, 0.5f, out FlatBody ledgeBody1, out errorMessage))
+            if (!FlatBody.CreateBoxBody(20f, 2f, 1f, true, 0.5f, out FlatBody ledgeBody1, out errorMessage))
             {
                 throw new Exception(errorMessage);
             }
 
+            ledgeBody1.MoveTo(new FlatVector(-10, 2.5f));
             ledgeBody1.Rotate(-MathHelper.TwoPi / 20f);
 
             this.world.AddBody(ledgeBody1);
             this.colors.Add(Color.DarkMagenta);
-            this.outlineColors.Add(Color.White);
 
-            if (!FlatBody.CreateBoxBody(20f, 2f, new FlatVector(10, 8.5f), 1f, true, 0.5f, out FlatBody ledgeBody2, out errorMessage))
+            if (!FlatBody.CreateBoxBody(20f, 2f, 1f, true, 0.5f, out FlatBody ledgeBody2, out errorMessage))
             {
                 throw new Exception(errorMessage);
             }
-
+            ledgeBody2.MoveTo(new FlatVector(10, 8.5f));
             ledgeBody2.Rotate(MathHelper.TwoPi / 20f);
 
             this.world.AddBody(ledgeBody2);
             this.colors.Add(Color.DarkOrange);
-            this.outlineColors.Add(Color.White);
 
 
 
@@ -137,14 +134,14 @@ namespace PhysicsEngine
                 FlatVector mouseWorldPosition =
                     FlatConverter.ToFlatVecor( mouse.GetMouseWorldPosition(this, this.screen, this.camera));
 
-                if(!FlatBody.CreateBoxBody(width, height, mouseWorldPosition, 2f, false, 0.6f, out FlatBody body, out string errorMesage))
+                if(!FlatBody.CreateBoxBody(width, height, 2f, false, 0.6f, out FlatBody body, out string errorMesage))
                 {
                     throw new Exception(errorMesage);
                 }
 
+                body.MoveTo(mouseWorldPosition);
                 this.world.AddBody(body);
                 this.colors.Add(RandomHelper.RandomColor());
-                this.outlineColors.Add(Color.White);
             }
 
 
@@ -156,14 +153,14 @@ namespace PhysicsEngine
                 FlatVector mouseWorldPosition =
                     FlatConverter.ToFlatVecor(mouse.GetMouseWorldPosition(this, this.screen, this.camera));
 
-                if (!FlatBody.CreateCircleBody(radius, mouseWorldPosition, 2f, false, 0.6f, out FlatBody body, out string errorMesage))
+                if (!FlatBody.CreateCircleBody(radius, 2f, false, 0.6f, out FlatBody body, out string errorMesage))
                 {
                     throw new Exception(errorMesage);
                 }
 
+                body.MoveTo(mouseWorldPosition);
                 this.world.AddBody(body);
                 this.colors.Add(RandomHelper.RandomColor());
-                this.outlineColors.Add(Color.White);
             }
 
             if (keyboard.IsKeyAvailable)
@@ -253,7 +250,6 @@ namespace PhysicsEngine
                 {
                     this.world.RemoveBody(body);
                     this.colors.RemoveAt(i);
-                    this.outlineColors.RemoveAt(i);
                 }
 
             }
@@ -282,14 +278,13 @@ namespace PhysicsEngine
                 if(body.ShapeType is ShapeType.Circle)
                 {
                     shapes.DrawCircleFill(position, body.Radius, 25, this.colors[i]);
-                    shapes.DrawCircle(position, body.Radius, 25, this.outlineColors[i]);
+                    shapes.DrawCircle(position, body.Radius, 25, Color.White);
                 }
                 else if (body.ShapeType is ShapeType.Box)
                 {
                     //shapes.DrawBox(position, body.Width, body.Height, Color.White);
-                    FlatConverter.ToVector2Array(body.GetTransformedVertice(), ref this.vertexBuffer);
-                    shapes.DrawPolygonFill(this.vertexBuffer, body.Triangles, this.colors[i]);
-                    shapes.DrawPolygon(this.vertexBuffer, this.outlineColors[i]);
+                    shapes.DrawBoxFill(position, body.Width, body.Height, body.Angle, this.colors[i]);
+                    shapes.DrawBox(position, body.Width, body.Height, body.Angle, Color.White);
 
                 }
             }

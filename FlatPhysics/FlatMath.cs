@@ -111,7 +111,7 @@ namespace FlatPhysics
 
         public static bool NearlyEqual(FlatVector a, FlatVector b)
         {
-            return FlatMath.NearlyEqual(a.X, b.X) && FlatMath.NearlyEqual(a.Y, b.Y);
+            return FlatMath.DistanceSquared(a, b) < FlatMath.VerySmallAmount * FlatMath.VerySmallAmount;
         }
     }
 }

@@ -884,6 +884,7 @@ namespace Flat.Graphics
             this.DrawBox(min, max, color);
         }
 
+
         public void DrawBox(Vector2 center, float width, float height, float angle, Color color)
         {
             float left = -width * 0.5f;
