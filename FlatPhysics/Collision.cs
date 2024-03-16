@@ -58,7 +58,8 @@ namespace FlatPhysics
             {
                 if (shapeTypeB is ShapeType.Box)
                 {
-
+                    Collision.FindContactPoints(bodyA.GetTransformedVertice(), bodyB.GetTransformedVertice(),
+                        out contact1, out contact2, out contactCount);
                 }
                 else if (shapeTypeB is ShapeType.Circle)
                 {
@@ -79,6 +80,75 @@ namespace FlatPhysics
                     contactCount = 1;
                 }
             }
+        }
+
+        private static void FindContactPoints(
+            FlatVector[] verticesA, FlatVector[] verticesB,
+            out FlatVector contact1, out FlatVector contact2,
+            out int contactCount)
+        {
+            contact1 = FlatVector.Zero;
+            contact2 = FlatVector.Zero;
+            contactCount = 0;
+
+            float minDistSqr = float.MaxValue;
+
+            for (int i = 0; i < verticesA.Length; i++)
+            {
+                FlatVector p = verticesA[i];
+
+                for(int j = 0; j < verticesB.Length; j++)
+                {
+                    FlatVector  va = verticesB[j];
+                    FlatVector  vb = verticesB[(j+1) % verticesB.Length];
+
+                    Collision.PointSegmentDistance(p, va, vb, out float distSq, out FlatVector cp);
+
+                    if(FlatMath.NearlyEqual( distSq , minDistSqr))
+                    {
+                        if(!FlatMath.NearlyEqual( cp , contact1))
+                        {
+                            contact2 = cp;
+                            contactCount = 2;
+                        }
+                    }
+                    else if(distSq < minDistSqr)
+                    {
+                        minDistSqr = distSq;
+                        contactCount = 1;
+                        contact1 = cp;
+                    }
+                }
+            }
+
+            for (int i = 0; i < verticesB.Length; i++)
+            {
+                FlatVector p = verticesB[i];
+
+                for (int j = 0; j < verticesA.Length; j++)
+                {
+                    FlatVector va = verticesA[j];
+                    FlatVector vb = verticesA[(j + 1) % verticesA.Length];
+
+                    Collision.PointSegmentDistance(p, va, vb, out float distSq, out FlatVector cp);
+
+                    if (FlatMath.NearlyEqual(distSq, minDistSqr))
+                    {
+                        if (!FlatMath.NearlyEqual(cp, contact1))
+                        {
+                            contact2 = cp;
+                            contactCount = 2;
+                        }
+                    }
+                    else if (distSq < minDistSqr)
+                    {
+                        minDistSqr = distSq;
+                        contactCount = 1;
+                        contact1 = cp;
+                    }
+                }
+            }
+
         }
 
         private static void FindContactPoint(

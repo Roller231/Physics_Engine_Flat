@@ -22,6 +22,8 @@ namespace FlatPhysics
         public readonly float InvMass;
         public readonly float Restitution;
         public readonly float Area;
+        public readonly float Inertia;
+        public readonly float InvInertia;
 
         public readonly bool IsStatic;
 
@@ -71,13 +73,17 @@ namespace FlatPhysics
             this.Height = height;
             this.ShapeType = shapeType;
 
+            this.Inertia = this.CalculateRotationalInertia();                       
+
             if (!this.IsStatic)
             {
                 this.InvMass = 1f / this.Mass;
+                this.InvInertia = 1f /  this.Inertia;
             }
             else
             {
                 this.InvMass = 0;
+                this.InvInertia = 0;
             }
 
             if (this.ShapeType is ShapeType.Box)
@@ -96,6 +102,22 @@ namespace FlatPhysics
             this.transformUpdateRequired = true;
             this.aabbUpdateRequired = true;
         }
+
+        private  float CalculateRotationalInertia()
+        {
+            if(this.ShapeType  is ShapeType.Circle)
+            {
+                return (1f / 2) * this.Mass * (this.Radius * this.Radius);
+            }
+            else if(this.ShapeType is ShapeType.Box)
+            {
+                return (1f / 12)  * this.Mass * (this.Width * this.Width + this.Height * this.Height);
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(nameof(this.ShapeType) + " Недопустимый тип фигуры");
+            }
+        } 
 
         private static FlatVector[] CreateBoxVertices(float width, float height)
         {

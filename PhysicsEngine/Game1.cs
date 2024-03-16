@@ -84,9 +84,31 @@ namespace PhysicsEngine
             }
 
             this.world.AddBody(groundBody);
-
             this.colors.Add(Color.DarkGreen);
             this.outlineColors.Add(Color.White);
+
+            if (!FlatBody.CreateBoxBody(20f, 2f, new FlatVector(-10, 2.5f), 1f, true, 0.5f, out FlatBody ledgeBody1, out errorMessage))
+            {
+                throw new Exception(errorMessage);
+            }
+
+            ledgeBody1.Rotate(-MathHelper.TwoPi / 20f);
+
+            this.world.AddBody(ledgeBody1);
+            this.colors.Add(Color.DarkMagenta);
+            this.outlineColors.Add(Color.White);
+
+            if (!FlatBody.CreateBoxBody(20f, 2f, new FlatVector(10, 8.5f), 1f, true, 0.5f, out FlatBody ledgeBody2, out errorMessage))
+            {
+                throw new Exception(errorMessage);
+            }
+
+            ledgeBody2.Rotate(MathHelper.TwoPi / 20f);
+
+            this.world.AddBody(ledgeBody2);
+            this.colors.Add(Color.DarkOrange);
+            this.outlineColors.Add(Color.White);
+
 
 
             this.timer = new Stopwatch();

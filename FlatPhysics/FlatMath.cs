@@ -8,6 +8,7 @@ namespace FlatPhysics
 {
     public static class FlatMath
     {
+        public static readonly float VerySmallAmount = 0.0005f;
 
         public static float Clamp(float value, float min, float max)
         {
@@ -103,5 +104,14 @@ namespace FlatPhysics
 
         }
 
+        public static bool NearlyEqual(float a, float b)
+        {
+            return MathF.Abs(a - b) < FlatMath.VerySmallAmount;
+        }
+
+        public static bool NearlyEqual(FlatVector a, FlatVector b)
+        {
+            return FlatMath.NearlyEqual(a.X, b.X) && FlatMath.NearlyEqual(a.Y, b.Y);
+        }
     }
 }
